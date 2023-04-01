@@ -1,63 +1,80 @@
 #include <stdio.h>
 #include <math.h>
-#include <graphics.h>
+#include <unistd.h>
 
-int main()
-{
-    int gd = DETECT, gm;
-    initgraph(&gd, &gm, "");
+#define WIDTH 80
+#define HEIGHT 25
+#define PI 3.14159265358979323846
 
+char framebuffer[HEIGHT][WIDTH];
+
+void clear_framebuffer() {
     int i, j;
-    float theta, phi, x, y, z, r1 = 2, r2 = 5;
-    float sintheta, costheta, sinphi, cosphi, dist;
-    int max_x = getmaxx(), max_y = getmaxy();
-    float screen_x, screen_y, scale_x = max_x / 2, scale_y = max_y / 2;
-    int mid_x = max_x / 2, mid_y = max_y / 2;
-    float surface_normal, light_source_x = 0, light_source_y = 0, light_source_z = -50;
-    float dx1, dy1, dx2, dy2, dx3, dy3;
-    float normal_x, normal_y, normal_z, length;
+    for (i = 0; i < HEIGHT; i++) {
+        for (j = 0; j < WIDTH; j++) {
+            framebuffer[i][j] = ' ';
+        }
+    }
+}
 
-    for (phi = 0; phi <= 2 * M_PI; phi += 0.1)
-    {
-        for (theta = 0; theta <= 2 * M_PI; theta += 0.1)
-        {
-            sintheta = sin(theta);
-            costheta = cos(theta);
-            sinphi = sin(phi);
-            cosphi = cos(phi);
-            x = r2 + r1 * costheta * cosphi;
-            y = r1 * sintheta;
-            z = r2 + r1 * costheta * sinphi + 50;
+void plot(int x, int y, char c) {
+    if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
+        framebuffer[y][x] = c;
+    }
+}
 
-            dx1 = x - (r2 + r1 * cos(phi) * cos(theta));
-            dy1 = y - (r1 * sin(theta));
-            dx2 = x - (r2 + r1 * cos(phi + 0.1) * cos(theta));
-            dy2 = y - (r1 * sin(theta));
-            dx3 = x - (r2 + r1 * cos(phi) * cos(theta + 0.1));
-            dy3 = y - (r1 * sin(theta + 0.1));
+void render_frame(double theta) {
+    int i, j;
+    double sin_theta = sin(theta);
+    double cos_theta = cos(theta);
 
-            normal_x = dy1 * dx2 - dy2 * dx1;
-            normal_y = dx1 * dy3 - dx3 * dy1;
-            normal_z = dx1 * dx2 + dy1 * dy2 + dx3 * dy3;
-            length = sqrt(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z);
+    clear_framebuffer();
 
-            normal_x /= length;
-            normal_y /= length;
-            normal_z /= length;
+    for (i = 0; i < 360; i += 5) {
+        double sin_i = sin(i * PI / 180.0);
+        double cos_i = cos(i * PI / 180.0);
 
-            surface_normal = normal_x * light_source_x + normal_y * light_source_y + normal_z * light_source_z;
+        for (j = 0; j < 360; j += 5) {
+            double sin_j = sin(j * PI / 180.0);
+            double cos_j = cos(j * PI / 180.0);
 
-            if (surface_normal > 0)
-            {
-                screen_x = mid_x + scale_x * x / z;
-                screen_y = mid_y + scale_y * y / z;
+            double x = cos_j * (2 + cos_i);
+            double y = sin_j * (2 + cos_i);
+            double z = sin_i;
 
-                putpixel(screen_x, screen_y, WHITE);
-            }
+            double new_x = cos_theta * x + sin_theta * z;
+            double new_z = -sin_theta * x + cos_theta * z;
+            double new_y = y;
+
+            int xp = (int)(WIDTH / 2 + 20 * new_x / (5 + new_z));
+            int yp = (int)(HEIGHT / 2 + 10 * new_y / (5 + new_z));
+
+            plot(xp, yp, '.');
         }
     }
 
-    getch();
-    closegraph();
+    for (i = 0; i < HEIGHT; i++) {
+        for (j = 0; j < WIDTH; j++) {
+            putchar(framebuffer[i][j]);
+        }
+        putchar('\n');
+    }
+}
+
+int main() {
+    double theta = 0;
+
+    while (1) {
+        render_frame(theta);
+
+        theta += 0.05;
+        if (theta > 2 * PI) {
+            theta -= 2 * PI;
+        }
+
+        usleep(30000);
+    }
+
     return 0;
 }
+
